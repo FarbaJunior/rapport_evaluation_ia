@@ -20,68 +20,73 @@ if uploaded_file:
     st.success("✅ Données chargées !")
     st.dataframe(data, use_container_width=True)
 
-    required_cols = {
+    # Colonnes attendues (mais optionnelles)
+    expected_cols = {
         'Changements_collectifs', 'Changements_individuels', 
         'Satisfaction', 'Recommandation', 'Appreciation', 'Suggestions'
     }
 
-    if required_cols.issubset(data.columns):
-        if st.button("🧠 Générer Rapport IA"):
-            with st.spinner("⏳ Génération du rapport en cours..."):
+    missing = expected_cols - set(data.columns)
+    if missing:
+        st.warning(f"⚠️ Certaines colonnes sont absentes du fichier : {missing}. Le rapport sera généré avec les données disponibles.")
 
-                satisfaction_moyenne = data['Satisfaction'].mean()
-                recommandation_moyenne = data['Recommandation'].mean()
+    if st.button("🧠 Générer Rapport IA"):
+        with st.spinner("⏳ Génération du rapport en cours..."):
+            # Valeurs par défaut si colonnes manquantes
+            satisfaction_moyenne = data['Satisfaction'].mean() if 'Satisfaction' in data else "Non disponible"
+            recommandation_moyenne = data['Recommandation'].mean() if 'Recommandation' in data else "Non disponible"
+            changements_collectifs = data['Changements_collectifs'].dropna().tolist() if 'Changements_collectifs' in data else []
+            changements_individuels = data['Changements_individuels'].dropna().tolist() if 'Changements_individuels' in data else []
+            appreciations = data['Appreciation'].dropna().tolist() if 'Appreciation' in data else []
+            suggestions = data['Suggestions'].dropna().tolist() if 'Suggestions' in data else []
 
+            # Graphiques si données présentes
+            if 'Satisfaction' in data:
                 fig1 = px.histogram(data, x='Satisfaction', nbins=10, title='📊 Satisfaction globale (0-10)', color_discrete_sequence=['#E7383A'])
-                fig2 = px.histogram(data, x='Recommandation', nbins=10, title='📊 Probabilité de recommandation (0-10)', color_discrete_sequence=['#F29325'])
-
                 st.plotly_chart(fig1, use_container_width=True)
+            if 'Recommandation' in data:
+                fig2 = px.histogram(data, x='Recommandation', nbins=10, title='📊 Probabilité de recommandation (0-10)', color_discrete_sequence=['#F29325'])
                 st.plotly_chart(fig2, use_container_width=True)
 
-                prompt = f"""
-                Tu es un expert en rédaction professionnelle en gestion du changement organisationnel et développement du leadership.
+            # Prompt GPT-4o
+            prompt = f"""
+            Tu es un expert en rédaction professionnelle en gestion du changement et leadership.
 
-                Voici les résultats d'une évaluation suite à une session :
+            Résumé des données d'évaluation collectées lors d'une session :
 
-                Satisfaction moyenne : {satisfaction_moyenne:.2f}/10
-                Probabilité moyenne de recommandation : {recommandation_moyenne:.2f}/10
+            Satisfaction moyenne : {satisfaction_moyenne}
+            Probabilité moyenne de recommandation : {recommandation_moyenne}
 
-                Changements observés au niveau collectif :
-                {data['Changements_collectifs'].dropna().tolist()}
+            Changements observés (collectifs) :
+            {changements_collectifs}
 
-                Changements observés au niveau individuel :
-                {data['Changements_individuels'].dropna().tolist()}
+            Changements observés (individuels) :
+            {changements_individuels}
 
-                Ce que les participants ont le plus apprécié :
-                {data['Appreciation'].dropna().tolist()}
+            Appréciations des participants :
+            {appreciations}
 
-                Suggestions d'amélioration :
-                {data['Suggestions'].dropna().tolist()}
+            Suggestions d'amélioration :
+            {suggestions}
 
-                Rédige un rapport professionnel structuré ainsi :
+            Génère un rapport professionnel structuré en :
+            1. Introduction
+            2. Analyse quantitative
+            3. Analyse qualitative
+            4. Ce qui a été apprécié
+            5. Axes d'amélioration
+            6. Conclusion et recommandations
+            """
 
-                1. Introduction générale
-                2. Synthèse quantitative (satisfaction et recommandation)
-                3. Analyse qualitative des changements observés (collectifs et individuels)
-                4. Principaux points appréciés par les participants
-                5. Axes précis d'amélioration proposés par les participants
-                6. Conclusion et recommandations concrètes pour les prochaines sessions
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "system", "content": prompt}]
+            )
 
-                Style clair, professionnel et axé résultats.
-                """
-
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "system", "content": prompt}]
-                )
-
-                rapport = response.choices[0].message.content
-                st.markdown("<h2 style='color: #E7383A;'>📝 Rapport de Session</h2>", unsafe_allow_html=True)
-                st.markdown(rapport)
-                st.download_button("📥 Télécharger Rapport", data=rapport, file_name="rapport_session.txt")
-
-    else:
-        st.error(f"⚠️ Votre fichier doit obligatoirement contenir les colonnes : {required_cols}")
+            rapport = response.choices[0].message.content
+            st.markdown("<h2 style='color: #E7383A;'>📝 Rapport de Session</h2>", unsafe_allow_html=True)
+            st.markdown(rapport)
+            st.download_button("📥 Télécharger Rapport", data=rapport, file_name="rapport_session.txt")
 
 st.markdown("""
 <style>
