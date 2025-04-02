@@ -79,7 +79,7 @@ if uploaded_file:
             """
 
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-3.5-turbo",
                 messages=[{"role": "system", "content": prompt}]
             )
 
