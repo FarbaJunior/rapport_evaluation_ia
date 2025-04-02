@@ -6,7 +6,7 @@ from openai import OpenAI
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.set_page_config(page_title="Rapport Évaluation Session", page_icon="🌺", layout="wide")
-st.image("logo_beautiful_soul.png", width=200)
+st.image("logo_bs.png", width=200)
 
 st.markdown("""
     <h1 style='text-align: center; color: #E7383A;'>🌺 Rapport Automatique de Session</h1>
